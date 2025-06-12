@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survivors-like (By: PedroFih)</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #eee;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        canvas {
+            background-color: #000;
+            border: 2px solid #eee;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Survivors-like (By: PedroFih)</h1>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script>
+        // Declarando canvas e ctx no escopo global
+        let canvas;
+        let ctx;
+
+        // utilities.js
+        function distance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function checkCollision(obj1, obj2) {
+            const  dist = distance(obj1.x, obj1.y, obj2.x, obj2.y);
+            return dist < (obj1.size / 2) + (obj2.size / 2);
+        }
+        
+        // Define os níveis de dificuldade dos inimigos
+        const ENEMY_TIERS = [
+            // Nível 0 (0-49s):     Inimigos padrão
+            { color: 'maroon',        health: 30,  damage: 10, experienceValue: 10,  speed: 1.3 },
+            // Nível 1 (50-99s):    Inimigos mais fortes
+            { color: 'darkslateblue', health: 50,  damage: 15, experienceValue: 20,  speed: 1.5 },
+            // Nível 2 (100-149s): Veteranos
+            { color: 'darkgreen',     health: 80,  damage: 20, experienceValue: 35,  speed: 1.8 },
+            // Nível 3 (150-199s): Elites
+            { color: 'rebeccapurple', health: 120, damage: 28, experienceValue: 50,  speed: 2.2 },
+            // Nível 4 (200-249s): Campeões
+            { color: 'darkgoldenrod', health: 200, damage: 35, experienceValue: 75,  speed: 3.0 },
+            // Nível 5 (250s+):     Lordes do Abismo
+            { color: 'black',         health: 400, damage: 50, experienceValue: 120, speed: 5.0 },
+        ];
+
+
+        // player.js
+        class Player {
+            constructor(x, y, size, speed, color) {
+                this.x = x;
+                this.y = y;
+                this.size  = size;
+                this.speed = speed;
+                this.color = color;
+                this.health       = 100;
+                this.maxHealth    = 100;
+                this.experience   = 0;
+                this.level        = 1;
+                this.nextLevelExp = 100;
+                this.weapons        = [];
+                this.activeWeapons  = {};
+                this.upgradeChoices = [];
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                const barWidth = this.size * 1.5;
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x - barWidth / 2, this.y - this.size / 2 - 15, barWidth, 5);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(this.x - barWidth / 2, this.y - this.size / 2 - 15, barWidth * (this.health / this.maxHealth), 5);
+            }
+
+            move(keys, canvasWidth, canvasHeight) {
+                if (keys['w']) this.y -= this.speed;
+                if (keys['s']) this.y += this.speed;
+                if (keys['a']) this.x -= this.speed;
+                if (keys['d']) this.x += this.speed;
+
+                this.x = Math.max(this.size / 2, Math.min(canvasWidth  - this.size / 2, this.x));
+                this.y = Math.max(this.size / 2, Math.min(canvasHeight - this.size / 2, this.y));
+            }
+
+            addWeapon(weapon) {
+                this.weapons.push(weapon);
+                this.activeWeapons[weapon.name] = {
+                    lastFired: 0,
+                    level: 1
+                };
+                const level1Stats = WEAPON_LEVEL_DATA[weapon.name][0];
+                Object.assign(weapon, level1Stats);
+                console.log(`Weapon added: ${weapon.name}.`);
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health < 0) this.health = 0;
+            }
+
+            addExperience(amount) {
+                this.experience += amount;
+                if (this.experience >= this.nextLevelExp) {
+                    this.levelUp();
+                }
+            }
+
+            levelUp() {
+                this.level++;
+                this.experience -= this.nextLevelExp;
+                this.nextLevelExp = Math.floor(this.nextLevelExp * 1.5);
+                this.maxHealth += 10;
+                this.health = this.maxHealth;
+                console.log(`Player Leveled Up! Level: ${this.level}`);
+                this.generateUpgradeChoices();
+                gameState.currentState = 'upgrading';
+            }
+
+            generateUpgradeChoices() {
+                this.upgradeChoices = [];
+                const potentialUpgrades = [];
+                const ownedWeapons = this.weapons.map(w => w.name);
+
+                this.weapons.forEach(weapon => {
+                    const weaponState = this.activeWeapons[weapon.name];
+                    if (weaponState.level < 5) {
+                        potentialUpgrades.push({
+                            name: `Melhorar ${weapon.name} (Nível ${weaponState.level + 1})`,
+                            description: WEAPON_LEVEL_DATA[weapon.name][weaponState.level].description,
+                            type: 'weapon_level',
+                            weaponName: weapon.name
+                        });
+                    }
+                });
+
+                if (ownedWeapons.length < 3) {
+                    Object.keys(WEAPON_TYPES).forEach(weaponName => {
+                        if (!ownedWeapons.includes(weaponName)) {
+                            potentialUpgrades.push({
+                                name: `Nova Arma: ${weaponName}`,
+                                description: `Adquire a arma ${weaponName}.`,
+                                type: 'weapon_new',
+                                weaponName: weaponName
+                            });
+                        }
+                    });
+                }
+                
+                potentialUpgrades.push(...BASE_STAT_UPGRADES);
+
+                const shuffled = potentialUpgrades.sort(() => 0.5 - Math.random());
+                this.upgradeChoices = shuffled.slice(0, 3);
+            }
+
+            applyUpgrade(upgrade) {
+                console.log(`Applying upgrade: ${upgrade.name}`);
+                switch (upgrade.type) {
+                    case 'weapon_new':
+                        if (WEAPON_TYPES[upgrade.weaponName]) {
+                            this.addWeapon(new WEAPON_TYPES[upgrade.weaponName]());
+                        }
+                        break;
+                    case 'weapon_level':
+                        const weaponState = this.activeWeapons[upgrade.weaponName];
+                        if (weaponState && weaponState.level < 5) {
+                            weaponState.level++;
+                            const weaponInstance = this.weapons.find(w => w.name === upgrade.weaponName);
+                            const newStats = WEAPON_LEVEL_DATA[upgrade.weaponName][weaponState.level - 1];
+                            Object.assign(weaponInstance, newStats);
+                            console.log(`${upgrade.weaponName} leveled up to ${weaponState.level}.`);
+                        }
+                        break;
+                    case 'stat':
+                        if (upgrade.stat === 'speed') this.speed += upgrade.value;
+                        if (upgrade.stat === 'maxHealth') {
+                            this.maxHealth += upgrade.value;
+                            this.health += upgrade.value;
+                        }
+                        console.log(`Stat ${upgrade.stat} increased by ${upgrade.value}.`);
+                        break;
+                }
+                this.upgradeChoices = [];
+                gameState.currentState = 'playing';
+            }
+        }
+
+        // enemy.js
+        class Enemy {
+            constructor(x, y, size, speed, color, health, damage, experienceValue) {
+                this.x = x;
+                this.y = y;
+                this.size  = size;
+                this.speed = speed;
+                this.color = color;
+                this.health    = health;
+                this.maxHealth = health;
+                this.damage    = damage;
+                this.experienceValue = experienceValue;
+            }
+            
+            draw(ctx) {
+                // Corpo
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Borda para inimigos de tier mais alto para destaque
+                if (this.maxHealth  > 300) {
+                    ctx.strokeStyle = 'gold';
+                    ctx.lineWidth   = 3;
+                    ctx.stroke();
+                }
+
+                // Barra de vida
+                 ctx.fillStyle = 'darkred';
+                 ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2 - 10, this.size, 5);
+                 ctx.fillStyle = 'orangered';
+                 ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2 - 10, this.size * (this.health / this.maxHealth), 5);
+            }
+
+            update(playerX, playerY) {
+                const angle = Math.atan2(playerY - this.y, playerX - this.x);
+                this.x += Math.cos(angle) * this.speed;
+                this.y += Math.sin(angle) * this.speed;
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+            }
+
+            isAlive() {
+                return this.health > 0;
+            }
+        }
+
+        // weapon.js
+        class Weapon {
+            constructor(name) {
+                this.name = name;
+            }
+        }
+
+        class Axe extends Weapon {
+            constructor() { super("Axe"); }
+            attack(player, enemies, projectiles, weaponInstance) {
+                gameState.lastWeaponEffectDraw[this.name] = { time: Date.now(), duration: 200, range: weaponInstance.range };
+                enemies.forEach(enemy => {
+                    if (distance(player.x, player.y, enemy.x, enemy.y) < weaponInstance.range) {
+                        enemy.takeDamage(weaponInstance.damage);
+                    }
+                });
+            }
+            drawEffect(ctx, player, effectData) {
+                ctx.strokeStyle = 'brown';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, effectData.range, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        class MagicBolt extends Weapon {
+            constructor() { super("Magic Bolt"); }
+            attack(player, enemies, projectiles, weaponInstance) {
+                if (enemies.length === 0) return;
+                let targets = [...enemies].sort((a, b) => distance(player.x, player.y, a.x, a.y) - distance(player.x, player.y, b.x, b.y));
+                
+                for(let i=0; i < weaponInstance.numProjectiles && i < targets.length; i++){
+                    const target = targets[i];
+                    const angle = Math.atan2(target.y - player.y, target.x - player.x);
+                     projectiles.push({
+                        x: player.x, y: player.y, angle: angle,
+                        size: weaponInstance.projectileSize,
+                        color: 'cyan',
+                        speed: weaponInstance.projectileSpeed,
+                        damage: weaponInstance.damage,
+                    });
+                }
+            }
+        }
+
+        class Fireball extends Weapon {
+             constructor() { super("Fireball"); }
+              attack(player, enemies, projectiles, weaponInstance) {
+                if (enemies.length === 0) return;
+                let target = enemies[getRandomInt(0, enemies.length-1)];
+                 const angle = Math.atan2(target.y - player.y, target.x - player.x);
+                 projectiles.push({
+                    x: player.x, y: player.y, angle: angle,
+                    size: weaponInstance.projectileSize,
+                    color: 'orange',
+                    speed: weaponInstance.projectileSpeed,
+                    damage: weaponInstance.damage,
+                });
+            }
+        }
+
+        class OrbitingSphere extends Weapon {
+            constructor(){
+                super("Esfera Orbitante");
+                this.angle = 0;
+            }
+        }
+
+        const WEAPON_TYPES = {
+            'Axe': Axe,
+            'Magic Bolt': MagicBolt,
+            'Fireball': Fireball,
+            'Esfera Orbitante': OrbitingSphere
+        };
+        
+        const WEAPON_LEVEL_DATA = {
+            "Axe": [
+                { level: 1, damage: 20, cooldown: 1500, range: 75, description: "Aumenta o dano e alcance." },
+                { level: 2, damage: 30, cooldown: 1400, range: 85, description: "Aumenta muito o dano." },
+                { level: 3, damage: 40, cooldown: 1300, range: 95, description: "Reduz recarga, aumenta dano e alcance." },
+                { level: 4, damage: 55, cooldown: 1200, range: 105, description: "Dano massivo." },
+                { level: 5, damage: 70, cooldown: 1000, range: 120, description: "Ataque em área devastador e rápido." }
+            ],
+            "Magic Bolt": [
+                { level: 1, damage: 15, cooldown: 800, projectileSpeed: 5, projectileSize: 8, numProjectiles: 1, description: "Dispara mais um projétil." },
+                { level: 2, damage: 15, cooldown: 750, projectileSpeed: 5.5, projectileSize: 8, numProjectiles: 2, description: "Aumenta o dano dos projéteis." },
+                { level: 3, damage: 20, cooldown: 700, projectileSpeed: 6, projectileSize: 10, numProjectiles: 2, description: "Dispara mais um projétil." },
+                { level: 4, damage: 22, cooldown: 650, projectileSpeed: 6, projectileSize: 10, numProjectiles: 3, description: "Aumenta muito o dano e a velocidade." },
+                { level: 5, damage: 28, cooldown: 500, projectileSpeed: 7, projectileSize: 12, numProjectiles: 4, description: "Dispara uma rajada de 4 projéteis." }
+            ],
+            "Fireball": [
+                { level: 1, damage: 30, cooldown: 2000, projectileSpeed: 3, projectileSize: 15, description: "Aumenta o tamanho e dano." },
+                { level: 2, damage: 40, cooldown: 1900, projectileSpeed: 3, projectileSize: 20, description: "Reduz recarga, aumenta dano." },
+                { level: 3, damage: 50, cooldown: 1800, projectileSpeed: 3.5, projectileSize: 22, description: "Aumenta muito o tamanho." },
+                { level: 4, damage: 60, cooldown: 1700, projectileSpeed: 3.5, projectileSize: 30, description: "Reduz muito a recarga." },
+                { level: 5, damage: 80, cooldown: 1500, projectileSpeed: 4, projectileSize: 35, description: "Lança uma bola de fogo gigante e poderosa." }
+            ],
+             "Esfera Orbitante": [
+                { level: 1, damage: 10, cooldown: 100, numSpheres: 1, orbitRadius: 50, rotationSpeed: 2, sphereSize: 12, description: "Adiciona outra esfera." },
+                { level: 2, damage: 12, cooldown: 100, numSpheres: 2, orbitRadius: 60, rotationSpeed: 2.2, sphereSize: 12, description: "Aumenta o dano e o raio da órbita." },
+                { level: 3, damage: 18, cooldown: 100, numSpheres: 2, orbitRadius: 70, rotationSpeed: 2.5, sphereSize: 14, description: "Adiciona uma terceira esfera." },
+                { level: 4, damage: 22, cooldown: 100, numSpheres: 3, orbitRadius: 80, rotationSpeed: 2.8, sphereSize: 14, description: "Aumenta muito o dano e a velocidade de rotação." },
+                { level: 5, damage: 30, cooldown: 100, numSpheres: 3, orbitRadius: 90, rotationSpeed: 3.5, sphereSize: 16, description: "Esferas maiores, mais rápidas e mais fortes." }
+            ]
+        };
+
+        const BASE_STAT_UPGRADES = [
+            { name: "Aumentar Velocidade de Movimento", description: "Você se move 0.5 mais rápido.", type: "stat", stat: "speed", value: 0.5 },
+            { name: "Aumentar Saúde Máxima", description: "Aumenta sua vida máxima em 20.", type: "stat", stat: "maxHealth", value: 20 }
+        ];
+
+        // game.js
+        const keys   = {};
+        let gameOver = false;
+        let lastEnemySpawnTime   = 0;
+        const enemySpawnInterval = 1000;
+
+        let gameState = {
+            player: null,
+            enemies:        [],
+            projectiles:    [],
+            experienceOrbs: [],
+            score:          0,
+            gameTime:       0,
+            difficultyLevel: 0, 
+            lastWeaponEffectDraw: {},
+            currentState: 'playing',
+            selectedUpgradeIndex: 0
+        };
+
+        function initGame() {
+            canvas = document.getElementById('gameCanvas');
+            if (!canvas) { return; }
+            ctx = canvas.getContext('2d');
+            if (!ctx) { return; }
+
+            gameState.player = new Player(canvas.width / 2, canvas.height / 2, 30, 3, 'white');
+            gameState.enemies        = [];
+            gameState.projectiles    = [];
+            gameState.experienceOrbs = [];
+            gameState.score          = 0;
+            gameState.gameTime       = 0;
+            gameState.difficultyLevel = 0;
+            gameState.lastWeaponEffectDraw = {};
+            lastEnemySpawnTime = 0;
+            gameOver = false;
+            gameState.currentState = 'playing';
+            gameState.selectedUpgradeIndex = 0;
+
+            gameState.player.addWeapon(new MagicBolt());
+            spawnEnemy();
+            
+            canvas.addEventListener('click', handleCanvasClick);
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+            gameLoop();
+        }
+
+        function handleKeyDown(e) {
+            keys[e.key.toLowerCase()] = true;
+            if (gameState.currentState === 'upgrading') {
+                if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') {
+                    gameState.selectedUpgradeIndex = Math.max(0, gameState.selectedUpgradeIndex - 1);
+                } else if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') {
+                    gameState.selectedUpgradeIndex = Math.min(gameState.player.upgradeChoices.length - 1, gameState.selectedUpgradeIndex + 1);
+                } else if (e.key === 'Enter') {
+                    if (gameState.player.upgradeChoices[gameState.selectedUpgradeIndex]) {
+                        gameState.player.applyUpgrade(gameState.player.upgradeChoices[gameState.selectedUpgradeIndex]);
+                    }
+                }
+            }
+        }
+
+        function handleCanvasClick(event) {
+             if (gameState.currentState !== 'upgrading') return;
+            const rect   = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            const choiceHeight = 80;
+            const menuWidth    = 450;
+            const menuX  = canvas.width / 2 - menuWidth / 2;
+            const startY = canvas.height / 2 - (gameState.player.upgradeChoices.length * choiceHeight) / 2;
+            for (let i  = 0; i < gameState.player.upgradeChoices.length; i++) {
+                const y = startY + i * choiceHeight;
+                if (mouseX > menuX && mouseX < menuX + menuWidth && mouseY > y && mouseY < y + choiceHeight - 10) {
+                    gameState.player.applyUpgrade(gameState.player.upgradeChoices[i]);
+                    return;
+                }
+            }
+        }
+
+        function spawnEnemy() {
+            const side = getRandomInt(0, 3);
+            let x, y;
+            const padding = 50;
+            switch (side) {
+                case 0: x = getRandomInt(-padding, canvas.width + padding); y = -padding; break;
+                case 1: x = canvas.width + padding; y = getRandomInt(-padding, canvas.height + padding); break;
+                case 2: x = getRandomInt(-padding, canvas.width + padding); y = canvas.height + padding; break;
+                case 3: x = -padding; y = getRandomInt(-padding, canvas.height + padding); break;
+            }
+            
+            const tierIndex = Math.min(gameState.difficultyLevel, ENEMY_TIERS.length - 1);
+            const tier = ENEMY_TIERS[tierIndex];
+            
+            gameState.enemies.push(new Enemy(x, y, 25, tier.speed, tier.color, tier.health, tier.damage, tier.experienceValue));
+        }
+
+        function update(deltaTime) {
+            if (gameOver || gameState.currentState === 'upgrading') return;
+
+            gameState.gameTime += deltaTime;
+            
+            const newDifficultyLevel = Math.floor(gameState.gameTime / 50000); // 50000ms = 50s
+            if (newDifficultyLevel > gameState.difficultyLevel) {
+                gameState.difficultyLevel = newDifficultyLevel;
+                console.log(`NEW ENEMY TIER: ${gameState.difficultyLevel}`);
+            }
+
+            gameState.player.move(keys, canvas.width, canvas.height);
+
+            if (Date.now() - lastEnemySpawnTime > enemySpawnInterval) {
+                spawnEnemy();
+                lastEnemySpawnTime = Date.now();
+            }
+
+            gameState.enemies.forEach(enemy => {
+                enemy.update(gameState.player.x, gameState.player.y);
+                if (checkCollision(gameState.player, enemy)) {
+                    gameState.player.takeDamage(enemy.damage * (deltaTime / 1000));
+                }
+            });
+
+            gameState.player.weapons.forEach(weapon => {
+                const weaponState = gameState.player.activeWeapons[weapon.name];
+                const weaponInstance = WEAPON_LEVEL_DATA[weapon.name][weaponState.level - 1];
+                
+                if (Date.now() - weaponState.lastFired > weaponInstance.cooldown) {
+                    if (weapon.attack) {
+                        weapon.attack(gameState.player, gameState.enemies, gameState.projectiles, weaponInstance);
+                    }
+                    weaponState.lastFired = Date.now();
+                }
+
+                if(weapon.name === "Esfera Orbitante"){
+                    weapon.angle += weaponInstance.rotationSpeed * (deltaTime / 1000);
+                     for(let i=0; i<weaponInstance.numSpheres; i++){
+                        const angle = weapon.angle + (i * (Math.PI * 2 / weaponInstance.numSpheres));
+                        const sphere = {
+                            x: gameState.player.x + Math.cos(angle) * weaponInstance.orbitRadius,
+                            y: gameState.player.y + Math.sin(angle) * weaponInstance.orbitRadius,
+                            size: weaponInstance.sphereSize
+                        };
+                        gameState.enemies.forEach(enemy => {
+                            if(checkCollision(sphere, enemy)){
+                                if(!enemy.lastHitByOrbit || Date.now() - enemy.lastHitByOrbit > 500){
+                                     enemy.takeDamage(weaponInstance.damage);
+                                     enemy.lastHitByOrbit = Date.now();
+                                }
+                            }
+                        });
+                     }
+                }
+            });
+
+            for (let i  = gameState.projectiles.length - 1; i >= 0; i--) {
+                const p = gameState.projectiles[i];
+                p.x += Math.cos(p.angle) * p.speed;
+                p.y += Math.sin(p.angle) * p.speed;
+
+                let hit = false;
+                for (let j = gameState.enemies.length - 1; j >= 0; j--) {
+                    const enemy = gameState.enemies[j];
+                    if (checkCollision({ ...p, size: p.size }, enemy)) {
+                        enemy.takeDamage(p.damage);
+                        hit = true;
+                        break; 
+                    }
+                }
+
+                if (hit || p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) {
+                    gameState.projectiles.splice(i, 1);
+                }
+            }
+            
+            for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                const enemy = gameState.enemies[i];
+                if (!enemy.isAlive()) {
+                    gameState.score += enemy.experienceValue;
+                    gameState.experienceOrbs.push({x: enemy.x, y: enemy.y, size: 8, color: 'gold', value: enemy.experienceValue});
+                    gameState.enemies.splice(i, 1);
+                }
+            }
+
+            for (let i = gameState.experienceOrbs.length - 1; i >= 0; i--) {
+                const orb  = gameState.experienceOrbs[i];
+                const dist = distance(gameState.player.x, gameState.player.y, orb.x, orb.y);
+                 if (dist < gameState.player.size / 2 + orb.size / 2) {
+                    gameState.player.addExperience(orb.value);
+                    gameState.experienceOrbs.splice(i, 1);
+                } else if(dist < 100){
+                    const angle = Math.atan2(gameState.player.y - orb.y, gameState.player.x - orb.x);
+                    orb.x += Math.cos(angle) * 3;
+                    orb.y += Math.sin(angle) * 3;
+                }
+            }
+
+            if (gameState.player.health <= 0) {
+                gameOver = true;
+                alert(`Game Over! Score: ${gameState.score}`);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (!gameState.player) return;
+
+            gameState.experienceOrbs.forEach(orb => {
+                ctx.fillStyle = orb.color;
+                ctx.beginPath();
+                ctx.arc(orb.x, orb.y, orb.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            gameState.enemies.forEach(enemy => enemy.draw(ctx));
+            gameState.player.draw(ctx);
+
+            gameState.projectiles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            gameState.player.weapons.forEach(weapon => {
+                const effect = gameState.lastWeaponEffectDraw[weapon.name];
+                if (effect && Date.now() - effect.time < effect.duration) {
+                     if (weapon.drawEffect) {
+                        weapon.drawEffect(ctx, gameState.player, effect);
+                    }
+                }
+                if(weapon.name === "Esfera Orbitante"){
+                     const weaponState    = gameState.player.activeWeapons[weapon.name];
+                     const weaponInstance = WEAPON_LEVEL_DATA[weapon.name][weaponState.level - 1];
+                     for(let i=0; i<weaponInstance.numSpheres; i++){
+                        const angle = weapon.angle + (i * (Math.PI * 2 / weaponInstance.numSpheres));
+                        const x = gameState.player.x + Math.cos(angle) * weaponInstance.orbitRadius;
+                        const y = gameState.player.y + Math.sin(angle) * weaponInstance.orbitRadius;
+                        ctx.fillStyle = 'purple';
+                        ctx.beginPath();
+                        ctx.arc(x, y, weaponInstance.sphereSize / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            });
+
+            drawUI();
+
+            if (gameState.currentState === 'upgrading') {
+                drawUpgradeMenu();
+            }
+        }
+        
+        // MODIFICADO: Função da UI principal
+        function drawUI(){
+             ctx.fillStyle = 'white';
+             ctx.font = '20px Arial';
+             ctx.textAlign = 'left';
+             ctx.fillText(`Score: ${gameState.score}`, 10, 30);
+             ctx.fillText(`Health: ${Math.ceil(gameState.player.health)}/${gameState.player.maxHealth}`, 10, 60);
+             ctx.textAlign = 'right';
+             ctx.fillText(`Time: ${Math.floor(gameState.gameTime/1000)}s`, canvas.width - 10, 30);
+             ctx.fillText(`Enemies: ${gameState.enemies.length}`, canvas.width - 10, 60);
+             ctx.fillText(`Difficulty Tier: ${gameState.difficultyLevel}`, canvas.width - 10, 90);
+             
+             // NOVO: Chama a função para desenhar a barra de XP
+             drawXpBar();
+        }
+
+        // NOVA FUNÇÃO: Desenha a barra de XP no estilo Minecraft
+        function drawXpBar() {
+            const player = gameState.player;
+            if (!player) return;
+
+            const barWidth = canvas.width * 0.6;
+            const barHeight = 18;
+            const barX = (canvas.width - barWidth) / 2;
+            const barY = canvas.height - barHeight - 15; // 15px de margem inferior
+
+            // Calcula a porcentagem de preenchimento
+            const xpPercentage = player.experience / player.nextLevelExp;
+            const fillWidth = barWidth * xpPercentage;
+
+            // Desenha o fundo da barra
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            // Desenha o preenchimento da barra
+            ctx.fillStyle = '#32cd32'; // Verde limão
+            ctx.fillRect(barX, barY, fillWidth, barHeight);
+
+            // Desenha a borda da barra
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            // Desenha o texto do nível sobre a barra
+            const levelText = player.level.toString();
+            const textX = barX + barWidth / 2;
+            const textY = barY + barHeight / 2;
+
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Contorno preto para o texto (estilo Minecraft)
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 4;
+            ctx.strokeText(levelText, textX, textY);
+
+            // Texto branco
+            ctx.fillStyle = 'white';
+            ctx.fillText(levelText, textX, textY);
+        }
+
+        function drawUpgradeMenu() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = 'white';
+            ctx.font = '32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("Escolha sua Melhoria!", canvas.width / 2, canvas.height / 2 - 150);
+
+            const choices = gameState.player.upgradeChoices;
+            const choiceHeight = 80;
+            const menuWidth = 450;
+            const menuX  = canvas.width  / 2 - menuWidth / 2;
+            const startY = canvas.height / 2 - (choices.length * choiceHeight) / 2;
+
+            choices.forEach((choice, index) => {
+                const y = startY + index * choiceHeight;
+                const boxHeight = choiceHeight - 10;
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 2;
+                if (index === gameState.selectedUpgradeIndex) {
+                    ctx.fillStyle = 'rgba(0, 150, 255, 0.8)';
+                    ctx.fillRect(menuX, y, menuWidth, boxHeight);
+                    ctx.strokeRect(menuX, y, menuWidth, boxHeight);
+                } else {
+                    ctx.fillStyle = 'rgba(40, 40, 40, 0.8)';
+                     ctx.fillRect(menuX, y, menuWidth, boxHeight);
+                     ctx.strokeRect(menuX, y, menuWidth, boxHeight);
+                }
+                
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'left';
+                ctx.font = '22px Arial';
+                ctx.fillText(choice.name, menuX + 15, y + 35);
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#ccc';
+                ctx.fillText(choice.description, menuX + 15, y + 60);
+            });
+             ctx.textAlign = 'center';
+        }
+
+        let lastTime = 0;
+        function gameLoop(currentTime = 0) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            update(deltaTime);
+            draw();
+
+            if (!gameOver) {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
