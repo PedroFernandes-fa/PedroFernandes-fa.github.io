@@ -1,0 +1,37 @@
+/* style.css */
+* {
+    box-sizing: border-box; /* Garante que padding e border não aumentem o tamanho final do elemento */
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Impede barras de rolagem */
+}
+
+body {
+    background-color: #222;
+    color: white;
+    font-family: Arial, sans-serif;
+    
+    /* Cria o layout centralizado */
+    display: flex;
+    flex-direction: column; /* Empilha os itens verticalmente */
+    justify-content: center; /* Centraliza verticalmente */
+    align-items: center;     /* Centraliza horizontalmente */
+}
+
+h1 {
+    margin: 0;
+    padding-bottom: 15px; /* Adiciona um respiro abaixo do título */
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px #000;
+}
+
+canvas {
+    background-color: black;
+    border: 2px solid #555;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    /* O JavaScript vai definir a largura e altura aqui */
+}
