@@ -1,6 +1,6 @@
 # RoGeo: A Roguelike with Geometry
 
-🔗 **Play now on Itch.io:** [https://pedrofih.itch.io/rogeo](https://pedrofih.itch.io/rogeo)
+🔗 [**Play now on Itch.io:**](https://pedrofernandes-fa.itch.io)
 
 RoGeo is a survival roguelike featuring fast-paced action, unique geometric visuals, and dynamic character progression. Master different weapons, evolve your builds, and face increasingly powerful enemies!
 
