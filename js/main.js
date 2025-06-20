@@ -1,7 +1,6 @@
 // ====================================================================================
 // GAME SETUP & GLOBAL VARIABLES
 // ====================================================================================
-// A variável 'canvas' agora é declarada em resize.js, então a removemos daqui.
 let ctx;
 
 const keys = {};
@@ -44,15 +43,13 @@ let inputMode = 'TECLADO'; // TECLADO or TOUCH
 // GAME LOGIC
 // ====================================================================================
 function setup() {
-    // A linha 'canvas = document.getElementById('gameCanvas');' foi removida
-    // pois a variável global 'canvas' de resize.js já contém a referência.
-    if (!canvas) return; // Apenas verificamos se ela existe.
+    if (!canvas) return; 
     ctx = canvas.getContext('2d');
     if (!ctx) return;
-    // Load settings
+    
     loadGems();
     loadSettings();
-    // Event Listeners
+    
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
     canvas.addEventListener('mousemove', handleMouseMove);
@@ -64,37 +61,25 @@ function setup() {
     canvas.addEventListener('touchmove', handleTouchMove);
     canvas.addEventListener('touchend', handleTouchEnd);
     
-    document.getElementById('main-title').innerText = _t('game_title');
     gameLoop();
 }
 
 function initGame() {
-    lastTime = 0; // CRITICAL: Resets the game timer for the new game
+    lastTime = 0; 
     gameState = {
         player: new Player(canvas.width / 2, canvas.height / 2, 30, 3, 'white', selectedCharacter),
-        enemies: [], projectiles: [], enemyProjectiles: [], experienceOrbs: [], bombs: [], explosions: [], fireTrails: [], gems: [], webs: [], temporaryPets: [],
+        enemies: [], projectiles: [], enemyProjectiles: [], experienceOrbs: [], bombs: [], explosions: [], fireTrails: [], gems: [], webs: [],
         score: 0, gameTime: 0, difficultyLevel: 0, lastWeaponEffectDraw: {}, currentState: 'playing', selectedUpgradeIndex: 0, bossPhase: 'none', rerollsAvailable: 1
     };
     gameState.player.gems = totalGems;
     
-    // Add starting weapon based on character
     let startingWeapon;
     switch(selectedCharacter) {
-        case 'Guerreiro': 
-            startingWeapon = new Machado();
-            break;
-        case 'Mago':
-            startingWeapon = new ProjetilMagico();
-            break;
-        case 'Mestre das Feras':
-            startingWeapon = new Lobos();
-            break;
-        case 'Bombadilho':
-            startingWeapon = new Bombinhas();
-            break;
-        default:
-            startingWeapon = new ProjetilMagico();
-            break;
+        case 'Guerreiro': startingWeapon = new Machado(); break;
+        case 'Mago': startingWeapon = new ProjetilMagico(); break;
+        case 'Mestre das Feras': startingWeapon = new Lobos(); break;
+        case 'Bombadilho': startingWeapon = new Bombinhas(); break;
+        default: startingWeapon = new ProjetilMagico(); break;
     }
     gameState.player.addWeapon(startingWeapon);
     
@@ -114,7 +99,6 @@ function update(deltaTime) {
     if (gameState.gameTime > 250000 && gameState.bossPhase === 'none') { gameState.bossPhase = 'pending'; }
     if (gameState.bossPhase === 'pending' && gameState.enemies.length === 0) { spawnBoss(); gameState.bossPhase = 'active'; }
     
-    // Handle movement
     const isMoving = gameState.player.move(keys, inputMode, { active: touchActive, base: joystickBase, head: joystickHead });
 
     if (gameState.player.health < gameState.player.maxHealth) { gameState.player.health += gameState.player.healthRegen * (timeSinceLastFrame / 1000); if (gameState.player.health > gameState.player.maxHealth) { gameState.player.health = gameState.player.maxHealth; } }
@@ -122,57 +106,51 @@ function update(deltaTime) {
     if (Date.now() - lastEnemySpawnTime > enemySpawnInterval && gameState.bossPhase === 'none') { spawnEnemy(); lastEnemySpawnTime = Date.now(); }
     if (gameState.gameTime - lastWaveTime > waveInterval && gameState.bossPhase === 'none') { spawnWave(); lastWaveTime = gameState.gameTime; }
 
-    gameState.enemies.forEach(e => { e.update(gameState.player, timeSinceLastFrame, gameState.enemyProjectiles, gameState.bombs); if(!e.isDashing && checkCollision(gameState.player, e)) gameState.player.takeDamage(e.damage); });
+    gameState.enemies.forEach(e => { e.update(gameState.player, timeSinceLastFrame, gameState.enemyProjectiles, gameState.bombs); if(checkCollision(gameState.player, e)) gameState.player.takeDamage(e.damage); });
     
     gameState.player.weapons.forEach(w => {
-        const ws = gameState.player.activeWeapons[w.name]; const wi = WEAPON_LEVEL_DATA[w.name][ws.level - 1]; const cd = wi.cooldown / (1 + gameState.player.cooldownReduction);
-        if (Date.now() - ws.lastFired > cd) { if (w.attack) { w.attack(gameState.player, gameState.enemies, gameState.projectiles, wi, ws); ws.lastFired = Date.now(); } }
-        if (w.name === "Pés Quentes" && isMoving && Date.now() - ws.lastFired > cd) { gameState.fireTrails.push({x: gameState.player.x, y: gameState.player.y, size: 15, damage: wi.damage * gameState.player.geralDamage * gameState.player.fireDamage, duration: wi.duration * gameState.player.durationBonus, createdAt: Date.now() }); ws.lastFired = Date.now(); }
-        const orbitalWeapons = ["Esfera Orbitante", "Chamas Orbitais", "Frio Orbital", "Veneno Orbital"];
-        if(orbitalWeapons.includes(w.name)){ w.angle += (wi.rotationSpeed * gameState.player.attackSpeed) * (timeSinceLastFrame/1000); for(let i=0; i<wi.numSpheres; i++){ const a = w.angle + (i*(Math.PI*2/wi.numSpheres)); const s = {x: gameState.player.x + Math.cos(a)*wi.orbitRadius, y: gameState.player.y + Math.sin(a)*wi.orbitRadius, size: wi.sphereSize}; gameState.enemies.forEach(e => { if(checkCollision(s, e) && (!e.lastHitByOrbit || Date.now() - e.lastHitByOrbit > 500)){
-            if (w.name === 'Esfera Orbitante') { e.takeDamage(wi.damage * gameState.player.geralDamage * gameState.player.physicalDamage); }
-            if (w.name === 'Chamas Orbitais')  { 
-                e.takeDamage(wi.damage * gameState.player.geralDamage);
-                if (!e.isBoss) { 
-                    e.isOnFire = true; 
-                    e.fireEndsAt = Date.now() + wi.fireDuration * gameState.player.durationBonus;
+        const ws = gameState.player.activeWeapons[w.name]; 
+        const wi = WEAPON_LEVEL_DATA[w.name][ws.level - 1]; 
+        const cd = wi.cooldown / (1 + gameState.player.cooldownReduction);
+        
+        if (Date.now() - ws.lastFired > cd) { 
+            if (w.attack) { 
+                w.attack(gameState.player, gameState.enemies, gameState.projectiles, wi, ws); 
+                ws.lastFired = Date.now(); 
+            } 
+        }
+        
+        if (w.name === "Pés Quentes" && isMoving && Date.now() - ws.lastFired > cd) { 
+            gameState.fireTrails.push({x: gameState.player.x, y: gameState.player.y, size: 15, damage: wi.damage * gameState.player.geralDamage * gameState.player.fireDamage, duration: wi.duration * gameState.player.durationBonus, createdAt: Date.now() }); 
+            ws.lastFired = Date.now(); 
+        }
+        
+        const orbitalWeapons = ["Esfera Orbitante", "Chamas Orbitais", "Frio Orbital", "Veneno Orbital", "Espirito da Luz", "Espirito das Trevas"];
+        if(orbitalWeapons.includes(w.name)){ 
+            w.angle += (wi.rotationSpeed * gameState.player.attackSpeed) * (timeSinceLastFrame/1000); 
+
+            // A lógica de dano dos orbitais que não são espíritos
+            if (!["Espirito da Luz", "Espirito das Trevas"].includes(w.name)) {
+                for(let i=0; i<wi.numSpheres; i++){ 
+                    const a = w.angle + (i*(Math.PI*2/wi.numSpheres)); 
+                    const s = {x: gameState.player.x + Math.cos(a)*wi.orbitRadius, y: gameState.player.y + Math.sin(a)*wi.orbitRadius, size: wi.sphereSize}; 
+                    gameState.enemies.forEach(e => { 
+                        if(checkCollision(s, e) && (!e.lastHitByOrbit || Date.now() - e.lastHitByOrbit > 500)){
+                            if (w.name === 'Esfera Orbitante') { e.takeDamage(wi.damage * gameState.player.geralDamage * gameState.player.physicalDamage); }
+                            if (w.name === 'Chamas Orbitais')  { e.takeDamage(wi.damage * gameState.player.geralDamage); if (!e.isBoss) { e.isOnFire = true; e.fireEndsAt = Date.now() + wi.fireDuration * gameState.player.durationBonus; } }
+                            if (w.name === 'Frio Orbital')     { e.takeDamage(wi.damage * gameState.player.geralDamage); if (!e.isBoss) { e.isFrozen = true; e.frozenUntil = Date.now() + wi.freezeDuration * gameState.player.durationBonus; } }
+                            if (w.name === 'Veneno Orbital')   { e.takeDamage(wi.damage * gameState.player.geralDamage); if (!e.isBoss) { e.isPoisoned = true; e.poisonDamage = wi.poisonDamage * player.poisonDamage; e.poisonEndsAt = Date.now() + wi.poisonDuration * gameState.player.durationBonus; } }
+                            e.lastHitByOrbit = Date.now();
+                        } 
+                    }); 
                 }
-            }
-            if (w.name === 'Frio Orbital')     {
-                e.takeDamage(wi.damage * gameState.player.geralDamage);
-                if (!e.isBoss) {
-                    e.isFrozen = true;
-                    e.frozenUntil = Date.now() + wi.freezeDuration * gameState.player.durationBonus;
-                }
-            }
-            if (w.name === 'Veneno Orbital')   {
-                e.takeDamage(wi.damage * gameState.player.geralDamage);
-                if (!e.isBoss) {
-                    e.isPoisoned = true;
-                    e.poisonDamage = wi.poisonDamage * gameState.player.poisonDamage; e.poisonEndsAt = Date.now() + wi.poisonDuration * gameState.player.durationBonus;
-                }
-            }
-            e.lastHitByOrbit = Date.now();
-        } }); } }
-        const spiritWeapons = ["Espirito da Luz", "Espirito das Trevas"];
-        if (spiritWeapons.includes(w.name)) { w.angle += (wi.rotationSpeed * gameState.player.attackSpeed) * (timeSinceLastFrame/1000); }
-        const petWeapons = ["Aranha", "Lobos", "Touro"];
-        if(petWeapons.includes(w.name) && w.updatePet) { w.updatePet(gameState.player, gameState.enemies, wi, timeSinceLastFrame); }
-    });
-    
-    for (let i=gameState.temporaryPets.length-1; i>=0; i--) {
-        const pet = gameState.temporaryPets[i];
-        if (Date.now() - pet.createdAt > pet.lifespan || pet.shotsLeft <= 0) { gameState.temporaryPets.splice(i,1); continue; }
-        if (Date.now() - pet.lastShot > pet.shotCooldown) {
-            let targets = [...gameState.enemies].sort((a, b) => distance(pet.x, pet.y, a.x, a.y) - distance(pet.x, pet.y, b.x, b.y));
-            if (targets[0]) {
-                const angle = Math.atan2(targets[0].y - pet.y, targets[0].x - pet.x);
-                gameState.projectiles.push({ type: 'standard', x: pet.x, y: pet.y, angle: angle, size: pet.projectileSize, color: pet.type === 'light' ? 'white' : 'indigo', speed: pet.speed, damage: pet.damage, enemiesHit: new Set() });
-                pet.shotsLeft--;
-                pet.lastShot = Date.now();
             }
         }
-    }
+        
+        if(w.updatePet) {
+             w.updatePet(gameState.player, gameState.enemies, wi, timeSinceLastFrame, gameState.projectiles);
+        }
+    });
 
     for (let i=gameState.projectiles.length-1; i>=0; i--) {
         const p = gameState.projectiles[i]; let remove = false;
@@ -195,9 +173,19 @@ function update(deltaTime) {
             const e = gameState.enemies[j];
             if (checkCollision(p, e) && p.enemiesHit && !p.enemiesHit.has(e.id)) {
                 e.takeDamage(p.damage); p.enemiesHit.add(e.id);
+
+                if (p.type === 'exploding_on_impact') {
+                    gameState.explosions.push({
+                        x: p.x, y: p.y, damage: p.explosionDamage, maxRadius: p.explosionRadius, 
+                        currentRadius: 0, duration: 300, createdAt: Date.now(), 
+                        fromPlayer: true, type: 'magic'
+                    });
+                }
+                
                 if (p.type === 'freezing'  && !e.isBoss) { e.isFrozen = true; e.frozenUntil = Date.now() + p.freezeDuration; }
                 if (p.type === 'poison'    && !e.isBoss) { e.isPoisoned = true; e.poisonDamage = p.poisonDamage; e.poisonEndsAt = Date.now() + p.poisonDuration; }
-                if (p.type === 'standard'  || p.type  === 'freezing' || p.type === 'poison') { remove = true; break; } 
+                
+                if (p.type === 'standard'  || p.type  === 'freezing' || p.type === 'poison' || p.type === 'exploding_on_impact') { remove = true; break; } 
                 if((p.type === 'piercing'  || p.type  === 'bull_charge') && p.enemiesHit.size >= p.pierceCount) { remove = true; break; }
                 if (p.type === 'boomerang' && p.state === 'throwing') p.state = 'returning';
             }
@@ -597,23 +585,11 @@ function spawnEnemy(typeOverride = null) {
     let x, y;
     const padding = 50;
     switch (side) {
-        case 0:
-            x = getRandomInt(-padding, canvas.width + padding);
-            y = -padding;
-            break;
-        case 1:
-            x = canvas.width + padding;
-            y = getRandomInt(-padding, canvas.height + padding);
-            break;
-        case 2:
-            x = getRandomInt(-padding, canvas.width + padding);
-            y = canvas.height + padding;
-            break;
-        case 3:
-            x = -padding;
-            y = getRandomInt(-padding, canvas.height + padding);
-            break;
-        }
+        case 0: x = getRandomInt(-padding, canvas.width + padding); y = -padding; break;
+        case 1: x = canvas.width + padding; y = getRandomInt(-padding, canvas.height + padding); break;
+        case 2: x = getRandomInt(-padding, canvas.width + padding); y = canvas.height + padding; break;
+        case 3: x = -padding; y = getRandomInt(-padding, canvas.height + padding); break;
+    }
     const enemyTypeKey = typeOverride || weightedEnemyTypes[getRandomInt(0, weightedEnemyTypes.length - 1)];
     const data = ENEMY_DATA[enemyTypeKey];
     const difficulty = cheats.difficultyOverride !== -1 ? cheats.difficultyOverride : gameState.difficultyLevel;
@@ -638,24 +614,12 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     let activeTooltip = null;
     switch(gameState.currentState) {
-        case 'menu':
-            drawMainMenu();
-            break;
-        case 'character_selection':
-            drawCharacterSelectionScreen();
-            break;
-        case 'credits':
-            drawCreditsMenu();
-            break;
-        case 'configurations':
-            drawConfigurationsMenu();
-            break;
-        case 'catalog':
-            activeTooltip = drawCatalog();
-            break;
-        case 'cheats':
-            drawCheatMenu();
-            break;
+        case 'menu': drawMainMenu(); break;
+        case 'character_selection': drawCharacterSelectionScreen(); break;
+        case 'credits': drawCreditsMenu(); break;
+        case 'configurations': drawConfigurationsMenu(); break;
+        case 'catalog': activeTooltip = drawCatalog(); break;
+        case 'cheats': drawCheatMenu(); break;
         case 'playing': case 'paused': case 'upgrading':
             if (!gameState.player) return;
             gameState.webs.forEach(w => {
@@ -715,20 +679,7 @@ function draw() {
                     ctx.moveTo(p.startX, p.startY);
                     ctx.lineTo(p.endX, p.endY);
                     ctx.stroke();
-                } else if(p.type === 'bull_charge') {
-                    ctx.fillStyle = p.color;
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.angle + Math.PI / 2);
-                    ctx.beginPath();
-                    ctx.moveTo(0, -p.size/2);
-                    ctx.lineTo(-p.size/2, p.size/2);
-                    ctx.lineTo(p.size/2, p.size/2);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.restore();
-                }
-                else {
+                } else {
                     ctx.save();
                     ctx.translate(p.x, p.y);
                     ctx.rotate(p.angle);
@@ -751,65 +702,51 @@ function draw() {
             });
             gameState.explosions.forEach(e => {
                 const l=1-((Date.now()-e.createdAt)/e.duration);
-                let color = e.type === 'frozen' ? `rgba(173, 216, 230, ${0.7*l})` : e.type === 'incendiary' ? `rgba(255, 100, 0, ${0.7*l})` : e.type === 'poison' ? `rgba(144, 238, 144, ${0.7*l})` :`rgba(255,120,0,${0.7*l})`;
+                let color = e.type === 'frozen' ? `rgba(173, 216, 230, ${0.7*l})` : e.type === 'incendiary' ? `rgba(255, 100, 0, ${0.7*l})` : e.type === 'poison' ? `rgba(144, 238, 144, ${0.7*l})` : e.type === 'magic' ? `rgba(255, 255, 150, ${0.7*l})` : `rgba(255,120,0,${0.7*l})`;
                 ctx.fillStyle= color;
                 ctx.beginPath();
                 ctx.arc(e.x,e.y,e.currentRadius,0,Math.PI*2);
                 ctx.fill();
             });
-            gameState.temporaryPets.forEach(pet => {
-                const life = 1 - (Date.now() - pet.createdAt) / pet.lifespan;
-                ctx.globalAlpha = life;
-                ctx.fillStyle = pet.type === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(75, 0, 130, 0.8)';
-                ctx.beginPath();
-                ctx.arc(pet.x, pet.y, 8, 0, Math.PI*2);
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-            });
+
             gameState.player.weapons.forEach(w => {
                 const e = gameState.lastWeaponEffectDraw[w.name];
                 if (e && Date.now() - e.time < e.duration && w.drawEffect) w.drawEffect(ctx, gameState.player, e);
                 const ws = gameState.player.activeWeapons[w.name];
                 const wi = WEAPON_LEVEL_DATA[w.name][ws.level - 1];
-                const orbitalWeapons = ["Esfera Orbitante", "Chamas Orbitais", "Frio Orbital", "Veneno Orbital"];
+                const orbitalWeapons = ["Esfera Orbitante", "Chamas Orbitais", "Frio Orbital", "Veneno Orbital", "Espirito da Luz", "Espirito das Trevas"];
                 if(orbitalWeapons.includes(w.name)){
-                    for(let k=0; k<wi.numSpheres; k++){
-                        const a = w.angle + (k*(Math.PI*2/wi.numSpheres));
-                        if (w.name === "Esfera Orbitante") ctx.fillStyle='purple';
-                        if (w.name === "Chamas Orbitais")  ctx.fillStyle='orange';
-                        if (w.name === "Frio Orbital")     ctx.fillStyle='cyan';
-                        if (w.name === "Veneno Orbital")   ctx.fillStyle='green';
+                    const radius = wi.orbitRadius;
+                    
+                    if (w.name === "Espirito da Luz" || w.name === "Espirito das Trevas") {
+                        const spiritX = gameState.player.x + Math.cos(w.angle) * radius;
+                        const spiritY = gameState.player.y + Math.sin(w.angle) * radius;
+                        ctx.fillStyle = w.name === 'Espirito da Luz' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(75, 0, 130, 0.8)';
                         ctx.beginPath();
-                        ctx.arc(gameState.player.x+Math.cos(a)*wi.orbitRadius, gameState.player.y+Math.sin(a)*wi.orbitRadius, wi.sphereSize/2, 0, Math.PI*2);
+                        ctx.arc(spiritX, spiritY, 10, 0, Math.PI*2);
                         ctx.fill();
-                    } 
+                    } else {
+                        for(let k=0; k<wi.numSpheres; k++){
+                            const a = w.angle + (k*(Math.PI*2/wi.numSpheres));
+                            if (w.name === "Esfera Orbitante") ctx.fillStyle='purple';
+                            if (w.name === "Chamas Orbitais")  ctx.fillStyle='orange';
+                            if (w.name === "Frio Orbital")     ctx.fillStyle='cyan';
+                            if (w.name === "Veneno Orbital")   ctx.fillStyle='green';
+                            ctx.beginPath();
+                            ctx.arc(gameState.player.x+Math.cos(a)*wi.orbitRadius, gameState.player.y+Math.sin(a)*wi.orbitRadius, wi.sphereSize/2, 0, Math.PI*2);
+                            ctx.fill();
+                        }
+                    }
                 }
-                const spiritWeapons = ["Espirito da Luz", "Espirito das Trevas"];
-                if(spiritWeapons.includes(w.name)){
-                    const isAvatar = ws.level >= 5;
-                    const radius = isAvatar ? wi.avatarOrbitRadius : wi.orbitRadius;
-                    const spiritX = gameState.player.x + Math.cos(w.angle) * radius;
-                    const spiritY = gameState.player.y + Math.sin(w.angle) * radius;
-                    ctx.fillStyle = w.name === 'Espirito da Luz' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(75, 0, 130, 0.8)';
-                    ctx.beginPath();
-                    ctx.arc(spiritX, spiritY, isAvatar ? 15 : 10, 0, Math.PI*2);
-                    ctx.fill();
-                }
-                if(w.name === 'Aranha') { w.spiders.forEach(spider => drawWeaponSymbol('Aranha', spider.x, spider.y)); }
-                if(w.name === 'Lobos')  { w.wolves.forEach(wolf => drawWeaponSymbol('Lobos', wolf.x, wolf.y)); }
+                if(w.drawPet) { w.drawPet(ctx); }
             });
             drawUI();
              if (touchActive) drawJoystick();
-             // A lógica de fim de jogo foi movida para os estados específicos
              if (gameState.currentState === 'upgrading') drawUpgradeMenu();
              else if (gameState.currentState === 'paused') { activeTooltip = drawPauseMenu(); }
              break;
-        case 'gameOver':
-            drawGameOver();
-            break;
-        case 'victory':
-            drawVictoryScreen();
-            break;
+        case 'gameOver': drawGameOver(); break;
+        case 'victory': drawVictoryScreen(); break;
     }
     if (activeTooltip) drawTooltip(activeTooltip);
 }

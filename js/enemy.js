@@ -29,6 +29,7 @@ class Enemy {
             this.bossRotation = 0;
             this.dashTarget   = {x:0, y:0};
             this.isDashing    = false;
+            this.dashAngle    = 0; // << NOVO: Armazena o ângulo do dash
             this.moving       = true;
         }
         if (data.shoots) { this.shoots = true;
@@ -144,11 +145,13 @@ class Enemy {
     }
     updateBoss(player, deltaTime, enemyProjectiles, enemyBombs){
         if (this.isDashing) {
-            const angle = Math.atan2(this.dashTarget.y - this.y, this.dashTarget.x - this.x);
-            const dashSpeed = 500;
-            this.x += Math.cos(angle) * dashSpeed * (deltaTime/16.67);
-            this.y += Math.sin(angle) * dashSpeed * (deltaTime/16.67);
-            if (distance(this.x, this.y, this.dashTarget.x, this.dashTarget.y) < 5) { 
+            // << CÓDIGO DO DASH CORRIGIDO >>
+            const dashSpeed = 12; // Aumentei um pouco a velocidade para ficar mais ameaçador
+            this.x += Math.cos(this.dashAngle) * dashSpeed * (deltaTime/16.67);
+            this.y += Math.sin(this.dashAngle) * dashSpeed * (deltaTime/16.67);
+            
+            // Termina o dash se atingir as bordas da tela ou chegar perto do alvo original
+            if (distance(this.x, this.y, this.dashTarget.x, this.dashTarget.y) < 20 || this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) { 
                 this.isDashing = false;
                 this.bossState = 'idle';
                 this.bossStateTimer = Date.now() + 2000;
@@ -185,8 +188,11 @@ class Enemy {
                 } 
                 break;
             case 'dash_charge': 
-                this.moving = true;
-                if (Date.now() > this.bossStateTimer) { this.isDashing = true; } 
+                this.moving = false; // Para o boss não se mover enquanto carrega o dash
+                if (Date.now() > this.bossStateTimer - 100) { // Inicia o dash um pouco antes do timer para fluidez
+                     this.isDashing = true; 
+                     this.dashAngle = Math.atan2(this.dashTarget.y - this.y, this.dashTarget.x - this.x); // Calcula o ângulo UMA VEZ
+                } 
                 break;
             case 'bombs': 
                 this.moving = true;

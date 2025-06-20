@@ -458,7 +458,6 @@ function drawPauseMenu() {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Title Background
     const titleY = canvas.height / 2 - 210;
     const titleBgWidth = 300;
     const titleBgHeight = 70;
@@ -473,7 +472,6 @@ function drawPauseMenu() {
     ctx.textAlign = 'center';
     ctx.fillText(_t('paused_title'), canvas.width / 2, canvas.height / 2 - 200);
     
-    // --- LAYOUT DOS BOTÕES MODIFICADO ---
     const btnY_Start = canvas.height / 2 - 150;
     const btnSpacing = 75;
 
@@ -483,14 +481,12 @@ function drawPauseMenu() {
     pauseConfigButton   = { x: canvas.width / 2 - 150, y: btnY_Start + (btnSpacing * 3), width: 300, height: 50 };
     const menuButton    = { x: canvas.width / 2 - 150, y: btnY_Start + (btnSpacing * 4), width: 300, height: 50 };
 
-    // --- DESENHAR O NOVO BOTÃO ---
     ctx.fillStyle = checkButtonClick(pauseReturnButton) ? '#666' : '#444';
     ctx.fillRect(pauseReturnButton.x, pauseReturnButton.y, pauseReturnButton.width, pauseReturnButton.height);
     ctx.fillStyle = 'white';
     ctx.font = '30px Arial';
     ctx.textBaseline = 'middle';
     ctx.fillText(_t('return_button'), canvas.width / 2, pauseReturnButton.y + pauseReturnButton.height / 2);
-    // --- FIM DO NOVO BOTÃO ---
         
     ctx.fillStyle = checkButtonClick(pauseRestartButton) ? '#666' : '#444';
     ctx.fillRect(pauseRestartButton.x, pauseRestartButton.y, pauseRestartButton.width, pauseRestartButton.height);
@@ -538,7 +534,6 @@ function drawPauseMenu() {
 }
 
 function drawGameOver() {
-    // A lógica de vitória foi movida para drawVictoryScreen
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = 'white';
@@ -598,7 +593,6 @@ function drawVictoryScreen() {
 function drawMainMenu() {
     ctx.textAlign = 'center';
 
-    // Title Background
     const titleY = canvas.height / 2 - 165;
     const titleBgWidth = 200;
     const titleBgHeight = 80;
@@ -644,7 +638,7 @@ function drawMainMenu() {
     ctx.font = '16px Arial';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.textAlign = 'right';
-    ctx.fillText('v0.5.1', canvas.width - 15, canvas.height - 15);
+    ctx.fillText('v0.5.2', canvas.width - 15, canvas.height - 15);
 
     ctx.textBaseline = 'alphabetic';
 }
@@ -652,7 +646,7 @@ function drawMainMenu() {
 function getCharSelectLayout() {
     const characters = ['Guerreiro', 'Mago', 'Mestre das Feras', 'Bombadilho'];
     const cols    = 3;
-    const boxSize = 180; // <-- VALOR AUMENTADO
+    const boxSize = 180;
     const padding = 30;
     const itemWidth = boxSize + padding;
     const startX  = (canvas.width - (cols * itemWidth - padding)) / 2;
@@ -703,8 +697,6 @@ function drawCharacterSelectionScreen() {
 
     ctx.restore();
 
-    // --- Draw Fixed UI ---
-    // Fundo do título
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(canvas.width / 2 - 270, 40, 540, 70);
     ctx.strokeStyle = 'white';
@@ -720,9 +712,7 @@ function drawCharacterSelectionScreen() {
     ctx.fillStyle = 'white';
 
     ctx.font = '30px Arial';
-
     ctx.textAlign = 'center';
-
     ctx.textBaseline = 'middle';
     ctx.fillText(_t('back_button'), canvas.width/2, charSelectBackButton.y + charSelectBackButton.height/2);
     ctx.textBaseline = 'alphabetic';
@@ -730,7 +720,7 @@ function drawCharacterSelectionScreen() {
     drawScrollbar('character_selection');
 }
 
-function drawCharacterSprite(player) { // A simplified draw function for menus
+function drawCharacterSprite(player) {
     ctx.fillStyle = 'white';
     ctx.beginPath();
     ctx.arc(0, 0, 15, 0, Math.PI * 2);
@@ -739,55 +729,28 @@ function drawCharacterSprite(player) { // A simplified draw function for menus
     switch(player.character) {
         case 'Guerreiro':
             ctx.fillStyle = '#C0C0C0';
-            ctx.beginPath();
-            ctx.moveTo(0, -20);
-            ctx.lineTo(-15, -10);
-            ctx.lineTo(15, -10);
-            ctx.closePath();
-            ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0, -20); ctx.lineTo(-15, -10); ctx.lineTo(15, -10); ctx.closePath(); ctx.fill();
             ctx.fillStyle = '#FFD700';
-            ctx.beginPath();
-            ctx.moveTo(-15, -10);
-            ctx.lineTo(-20, -18);
-            ctx.lineTo(-12, -12);
-            ctx.fill();
-            ctx.moveTo(15, -10);
-            ctx.lineTo(20, -18);
-            ctx.lineTo(12, -12);
-            ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-15, -10); ctx.lineTo(-20, -18); ctx.lineTo(-12, -12); ctx.fill();
+            ctx.moveTo(15, -10); ctx.lineTo(20, -18); ctx.lineTo(12, -12); ctx.fill();
             break;
         case 'Mago':
             ctx.fillStyle = 'blue';
-            ctx.beginPath();
-            ctx.moveTo(0, -30);
-            ctx.lineTo(-15, -10);
-            ctx.lineTo(15, -10);
-            ctx.closePath();
-            ctx.fill();
+            ctx.beginPath(); ctx.moveTo(0, -30); ctx.lineTo(-15, -10); ctx.lineTo(15, -10); ctx.closePath(); ctx.fill();
             ctx.fillStyle = 'yellow';
-            ctx.beginPath();
-            ctx.arc(0, -25, 3, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(0, -25, 3, 0, Math.PI * 2); ctx.fill();
             break;
         case 'Mestre das Feras':
             ctx.fillStyle = '#8B4513';
-            ctx.beginPath();
-            ctx.arc(-10, -15, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(10, -15, 8, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(-10, -15, 8, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(10, -15, 8, 0, Math.PI * 2); ctx.fill();
             break;
         case 'Bombadilho':
             ctx.fillStyle = 'black';
             ctx.fillRect(-15, -10, 30, 12);
             ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(-7, -4, 3, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(7, -4, 3, 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(-7, -4, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(7, -4, 3, 0, Math.PI*2); ctx.fill();
             break;
         }
         ctx.restore();
@@ -795,8 +758,6 @@ function drawCharacterSprite(player) { // A simplified draw function for menus
 
 function drawCreditsMenu() {
     ctx.textAlign = 'center';
-
-    // Title Background
     const titleY = 140;
     const titleBgWidth  = 300;
     const titleBgHeight = 70;
@@ -841,26 +802,20 @@ function getSortedCategorizedWeapons() {
 
 function getCatalogLayout() {
     const categorizedWeapons = getSortedCategorizedWeapons();
-    const cols = 6;
-    const boxSize = 80, padding = 20;
-    const itemWidth = boxSize + padding;
+    const cols = 6, boxSize = 80, padding = 20, itemWidth = boxSize + padding;
     const startX = (canvas.width - (cols * itemWidth - padding)) / 2;
     let yCursor = 120;
     const itemLayout = [];
-
     for (const categoryKey in categorizedWeapons) {
         const weaponsInCategory = categorizedWeapons[categoryKey];
         if (weaponsInCategory.length === 0) continue;
-        
-        yCursor += 40; // Space for category title
-
+        yCursor += 40;
         weaponsInCategory.forEach((name, index) => {
             const col = index % cols;
             const row = Math.floor(index / cols);
             const item = { name: name, x: startX + col * itemWidth, y: yCursor + row * (boxSize + padding), w: boxSize, h: boxSize };
             itemLayout.push(item);
         });
-        
         const numRows = Math.ceil(weaponsInCategory.length / cols);
         yCursor += numRows * (boxSize + padding);
     }
@@ -873,7 +828,6 @@ function drawCatalog() {
     const virtualMouseY = mouseY + catalogScrollY;
     let tooltipData = null;
 
-    // --- Draw Scrolling Content ---
     ctx.save();
     ctx.translate(0, -catalogScrollY);
 
@@ -882,17 +836,15 @@ function drawCatalog() {
     const startX = (canvas.width - (cols * itemWidth - padding)) / 2;
 
     for (const categoryKey in categorizedWeapons) {
-            const weaponsInCategory = categorizedWeapons[categoryKey];
-            if (weaponsInCategory.length === 0) continue;
-            
-            yCursor += 40;
-            ctx.font = '24px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillStyle = 'gold';
-            ctx.fillText(_t(categoryKey), startX, yCursor - 10);
-            
-            const numRows = Math.ceil(weaponsInCategory.length / cols);
-            yCursor += numRows * (boxSize + padding);
+        const weaponsInCategory = categorizedWeapons[categoryKey];
+        if (weaponsInCategory.length === 0) continue;
+        yCursor += 40;
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'gold';
+        ctx.fillText(_t(categoryKey), startX, yCursor - 10);
+        const numRows = Math.ceil(weaponsInCategory.length / cols);
+        yCursor += numRows * (boxSize + padding);
     }
     
     itemLayout.forEach(item => {
@@ -913,7 +865,6 @@ function drawCatalog() {
     });
     ctx.restore();
 
-    // --- Draw Fixed UI Elements ---
     const titleWidth = 500;
     ctx.fillStyle = 'black';
     ctx.fillRect(canvas.width/2 - titleWidth/2, 30, titleWidth, 50);
@@ -941,12 +892,9 @@ function drawCatalog() {
 }
 
 function drawTooltip(data) {
-    ctx.save(); // Isolate tooltip drawing context
+    ctx.save();
     const allLevelsData = WEAPON_LEVEL_DATA[data.name];
-    if (!allLevelsData) {   
-        ctx.restore();
-        return;
-    }
+    if (!allLevelsData) { ctx.restore(); return; }
     const lineHeight = 18;
     ctx.font = '14px Arial';
     let maxWidth = 0;
@@ -981,7 +929,7 @@ function drawTooltip(data) {
         const text = `Level ${levelNum}: ${_t(levelData.description_key)}`;
         ctx.fillText(text, tooltipX + 10, tooltipY + 35 + (index * lineHeight));
     });
-    ctx.restore(); // Restore context to prevent side-effects
+    ctx.restore();
 }
 
 function drawCheatMenu(){
@@ -989,11 +937,8 @@ function drawCheatMenu(){
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.textAlign = 'center';
 
-
-    // Title Background
     const titleY = 70;
-    const titleBgWidth = 500;
-    const titleBgHeight = 80;
+    const titleBgWidth = 500, titleBgHeight = 80;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(canvas.width / 2 - titleBgWidth / 2, titleY - titleBgHeight / 2 - 5, titleBgWidth, titleBgHeight);
     ctx.strokeStyle = 'white';
@@ -1003,9 +948,6 @@ function drawCheatMenu(){
     ctx.font = '50px Arial';
     ctx.fillText(_t('cheat_title'), canvas.width / 2, 80);
 
-    ctx.fillStyle = 'red';
-    ctx.font = '50px Arial';
-    ctx.fillText(_t('cheat_title'), canvas.width / 2, 80);
     const buttons = [
         { y: 150, text: `${_t('cheat_infinite_health')}: ${cheats.infiniteHealth ? _t('state_on') : _t('state_off')}`}, { y: 200, text: _t('cheat_level_up')},
         { y: 250, text: `${_t('cheat_infinite_rerolls')}: ${cheats.infiniteRerolls ? _t('state_on') : _t('state_off')}`},
@@ -1038,7 +980,6 @@ function drawConfigurationsMenu() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.textAlign = 'center';
 
-    // Title Background
     const titleY = 70;
     const titleBgWidth  = 500;
     const titleBgHeight = 70;
@@ -1090,11 +1031,11 @@ function drawConfigurationsMenu() {
 }
 
 function drawJoystick() {
-    ctx.globalAlpha = 0.5; // Base circle
+    ctx.globalAlpha = 0.5;
     ctx.fillStyle = 'grey';
     ctx.beginPath();
     ctx.arc(joystickBase.x, joystickBase.y, joystickRadius, 0, Math.PI * 2);
-    ctx.fill(); // Head circle
+    ctx.fill();
     ctx.fillStyle = 'darkgrey';
     ctx.beginPath();
     ctx.arc(joystickHead.x, joystickHead.y, joystickRadius / 2, 0, Math.PI * 2);
@@ -1123,7 +1064,7 @@ function getScrollbarLayout(screen) {
         trackX: trackX, trackY: trackY, trackWidth: trackWidth, trackHeight: trackHeight,
         thumbRect: { x: trackX, y: thumbY, width: trackWidth, height: thumbHeight },
         maxScroll: maxScroll,
-        dragStartY: 0 // Will be set on drag start
+        dragStartY: 0
     };
 }
 
@@ -1131,11 +1072,9 @@ function drawScrollbar(screen) {
     const scrollbar = getScrollbarLayout(screen);
     if (!scrollbar.visible) return;
 
-    // Track
     ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
     ctx.fillRect(scrollbar.trackX, scrollbar.trackY, scrollbar.trackWidth, scrollbar.trackHeight);
 
-    // Thumb
     ctx.fillStyle = 'rgba(200, 200, 200, 0.8)';
     ctx.fillRect(scrollbar.thumbRect.x, scrollbar.thumbRect.y, scrollbar.thumbRect.width, scrollbar.thumbRect.height);
 }

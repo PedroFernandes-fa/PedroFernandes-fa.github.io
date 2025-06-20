@@ -2,18 +2,13 @@
 // RESIZE LOGIC
 // ====================================================================================
 const canvas = document.getElementById('gameCanvas');
-const title  = document.getElementById('main-title'); // Pega o elemento do título
 const originalWidth  = 800;
 const originalHeight = 600;
 const aspectRatio = originalWidth / originalHeight;
 
 function resizeCanvas() {
-    // Calcula a altura disponível, subtraindo a altura do título e um pouco de preenchimento
-    const titleHeight = title.offsetHeight;
-    const verticalPadding = 20; // Espaço extra para respiro (10px em cima, 10px em baixo)
-    
-    const availableHeight = window.innerHeight - titleHeight - verticalPadding;
-    const availableWidth  = window.innerWidth * 0.98; // Usa 98% da largura da janela
+    const availableHeight = window.innerHeight * 0.95;
+    const availableWidth  = window.innerWidth  * 0.95;
 
     let newWidth, newHeight;
 

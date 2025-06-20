@@ -168,191 +168,182 @@ class Raio extends Weapon           {
     } 
 }
 
-// PETS:// Em EspiritoDaLuz
-class EspiritoDaLuz extends Weapon     {
-    constructor() { super("Espirito da Luz"); this.angle = 0; }
+// PETS:
+class EspiritoDaLuz extends Weapon {
+    constructor() {
+        super("Espirito da Luz");
+        this.angle = 0;
+    }
+
     attack(player, enemies, projectiles, weaponInstance, weaponState) {
-        // --- LÓGICA MODIFICADA ---
-        // Ataque de projétil sempre acontece (a menos que não haja inimigos)
         if (enemies.length === 0) return;
-        let targets = [...enemies].sort((a, b) => distance(player.x, player.y, a.x, a.y) - distance(player.x, player.y, b.x, b.y));
+        let targets = [...enemies].filter(e => e.isAlive()).sort((a, b) => distance(player.x, player.y, a.x, a.y) - distance(player.x, player.y, b.x, b.y));
         const spiritX = player.x + Math.cos(this.angle) * weaponInstance.orbitRadius;
         const spiritY = player.y + Math.sin(this.angle) * weaponInstance.orbitRadius;
-        if(targets[0]){
+        
+        if (targets[0]) {
             const angleToEnemy = Math.atan2(targets[0].y - spiritY, targets[0].x - spiritX);
-            projectiles.push({ type: 'standard', x: spiritX, y: spiritY, angle: angleToEnemy, size: weaponInstance.projectileSize, color: 'white', speed: weaponInstance.projectileSpeed * player.attackSpeed, damage: weaponInstance.damage * player.geralDamage * player.petDamage, enemiesHit: new Set() });
-        }
+            const proj = {
+                type: 'standard', x: spiritX, y: spiritY, angle: angleToEnemy, size: weaponInstance.projectileSize, 
+                color: 'white', speed: weaponInstance.projectileSpeed * player.attackSpeed, 
+                damage: weaponInstance.damage * player.geralDamage * player.petDamage, 
+                enemiesHit: new Set()
+            };
 
-        // Se for nível 5, também invoca o avatar
-        if (weaponState.level >= 5) {
-            const avatarSpiritX = player.x + Math.cos(this.angle) * weaponInstance.avatarOrbitRadius;
-            const avatarSpiritY = player.y + Math.sin(this.angle) * weaponInstance.avatarOrbitRadius;
-            gameState.temporaryPets.push({
-                type: 'light', x: avatarSpiritX, y: avatarSpiritY, createdAt: Date.now(), lifespan: weaponInstance.summonLifespan,
-                shotsLeft: getRandomInt(3,5), shotCooldown: weaponInstance.summonShotCooldown, lastShot: 0,
-                projectileSize: weaponInstance.avatarProjectileSize, damage: weaponInstance.damage * player.geralDamage * player.petDamage,
-                speed: weaponInstance.projectileSpeed * player.attackSpeed
-            });
+            if (weaponState.level >= 5) {
+                proj.type = 'exploding_on_impact';
+                proj.explosionRadius = weaponInstance.explosionRadius;
+                proj.explosionDamage = weaponInstance.explosionDamage * player.geralDamage * player.petDamage * player.explosiveDamage;
+            }
+
+            projectiles.push(proj);
         }
     }
 }
-
-// Em EspiritoDasTrevas
 class EspiritoDasTrevas extends Weapon {
-    constructor() { super("Espirito das Trevas"); this.angle = 0; }
+    constructor() {
+        super("Espirito das Trevas");
+        this.angle = 0;
+    }
+
     attack(player, enemies, projectiles, weaponInstance, weaponState) {
-        // --- LÓGICA MODIFICADA ---
         if (enemies.length === 0) return;
-        let targets = [...enemies].sort((a, b) => distance(player.x, player.y, a.x, a.y) - distance(player.x, player.y, b.x, b.y));
+        let targets = [...enemies].filter(e => e.isAlive()).sort((a, b) => distance(player.x, player.y, a.x, a.y) - distance(player.x, player.y, b.x, b.y));
         const spiritX = player.x + Math.cos(this.angle) * weaponInstance.orbitRadius;
         const spiritY = player.y + Math.sin(this.angle) * weaponInstance.orbitRadius;
-        if(targets[0]){
+        
+        if (targets[0]) {
             const angleToEnemy = Math.atan2(targets[0].y - spiritY, targets[0].x - spiritX);
-            projectiles.push({ type: 'standard', x: spiritX, y: spiritY, angle: angleToEnemy, size: weaponInstance.projectileSize, color: 'indigo', speed: weaponInstance.projectileSpeed * player.attackSpeed, damage: weaponInstance.damage * player.geralDamage * player.petDamage, enemiesHit: new Set() });
-        }
+            const proj = {
+                type: 'standard', x: spiritX, y: spiritY, angle: angleToEnemy, size: weaponInstance.projectileSize, 
+                color: 'indigo', speed: weaponInstance.projectileSpeed * player.attackSpeed, 
+                damage: weaponInstance.damage * player.geralDamage * player.petDamage, 
+                enemiesHit: new Set()
+            };
 
-        if (weaponState.level >= 5) {
-            const avatarSpiritX = player.x + Math.cos(this.angle) * weaponInstance.avatarOrbitRadius;
-            const avatarSpiritY = player.y + Math.sin(this.angle) * weaponInstance.avatarOrbitRadius;
-            gameState.temporaryPets.push({
-                type: 'dark', x: avatarSpiritX, y: avatarSpiritY, createdAt: Date.now(), lifespan: weaponInstance.summonLifespan,
-                shotsLeft: getRandomInt(3,5), shotCooldown: weaponInstance.summonShotCooldown, lastShot: 0,
-                projectileSize: weaponInstance.avatarProjectileSize, damage: weaponInstance.damage * player.geralDamage * player.petDamage,
-                speed: weaponInstance.projectileSpeed * player.attackSpeed
-            });
+            if (weaponState.level >= 5) {
+                proj.type = 'exploding_on_impact';
+                proj.explosionRadius = weaponInstance.explosionRadius;
+                proj.explosionDamage = weaponInstance.explosionDamage * player.geralDamage * player.petDamage * player.explosiveDamage;
+            }
+
+            projectiles.push(proj);
         }
     }
 }
-class Aranha extends Weapon            { 
-    constructor() { super("Aranha"); } 
-    init(player) { this.spiders = []; this.addSpider(player); } 
-    onLevelUp(player, level) { if (level === 2 || level === 5) this.addSpider(player); } 
-    addSpider(player) { this.spiders.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2, lastWeb: 0, id: Math.random() }); } 
+class Aranha extends Weapon {
+    constructor() { super("Aranha"); }
+    init(player) { this.spiders = []; this.addSpider(player); }
+    onLevelUp(player, level) { if (level === 2 || level === 5) this.addSpider(player); }
+    addSpider(player) { this.spiders.push({ x: player.x, y: player.y, angle: Math.random() * Math.PI * 2, lastWeb: 0, id: Math.random() }); }
     updatePet(player, enemies, weaponInstance, deltaTime) {
         this.spiders.forEach(spider => {
+            const distFromPlayer = distance(spider.x, spider.y, player.x, player.y);
+            const leashDistance = 200, personalSpace = 50;  
+            if (distFromPlayer > leashDistance) { spider.angle = Math.atan2(player.y - spider.y, player.x - spider.x); }
+            else if (distFromPlayer < personalSpace) { spider.angle = Math.atan2(spider.y - player.y, spider.x - player.x); }
+            else if (Math.random() < 0.05) { spider.angle += (Math.random() - 0.5) * Math.PI / 2; }
+            if (spider.x < 10 || spider.x > canvas.width - 10 || spider.y < 10 || spider.y > canvas.height - 10) { spider.angle = Math.atan2(player.y - spider.y, player.x - spider.x); }
             spider.x += Math.cos(spider.angle) * weaponInstance.speed * (deltaTime / 16.67);
             spider.y += Math.sin(spider.angle) * weaponInstance.speed * (deltaTime / 16.67);
-            // --- LÓGICA MODIFICADA ---
-            const maxDistance = 350; // Distância máxima que a aranha pode se afastar
-            const distFromPlayer = distance(spider.x, spider.y, player.x, player.y);
-
-            // Se a aranha estiver muito longe OU mudar de direção aleatoriamente
-            if (distFromPlayer > maxDistance) {
-                spider.angle = Math.atan2(player.y - spider.y, player.x - spider.x);
-            } else if (Math.random() < 0.05) {
-                spider.angle = Math.random() * Math.PI * 2;
-            }
-            
-            if (Math.random() < 0.05) spider.angle = Math.random() * Math.PI * 2;
-            if (spider.x < 0 || spider.x > canvas.width || spider.y < 0 || spider.y > canvas.height) spider.angle = Math.atan2(player.y - spider.y, player.x - spider.x);      enemies.forEach(e => { 
+            enemies.forEach(e => {
                 if (checkCollision({ ...spider, size: weaponInstance.petSize }, e) && (!e.lastHitBySpider || !e.lastHitBySpider[spider.id] || Date.now() - e.lastHitBySpider[spider.id] > 500)) {
-                    e.takeDamage(weaponInstance.damage * player.geralDamage * player.petDamage); if(!e.lastHitBySpider) e.lastHitBySpider = {};
-                    e.lastHitBySpider[spider.id] = Date.now(); 
-                } 
-            }); 
+                    e.takeDamage(weaponInstance.damage * player.geralDamage * player.petDamage);
+                    if (!e.lastHitBySpider) e.lastHitBySpider = {};
+                    e.lastHitBySpider[spider.id] = Date.now();
+                }
+            });
             if (Date.now() - spider.lastWeb > weaponInstance.webCooldown) {
                 gameState.webs.push({ x: spider.x, y: spider.y, size: weaponInstance.webSize, duration: weaponInstance.webDuration, createdAt: Date.now() });
                 spider.lastWeb = Date.now();
             }
-        }); 
-    } 
+        });
+    }
+    drawPet(ctx) { this.spiders.forEach(spider => drawWeaponSymbol('Aranha', spider.x, spider.y)); }
 }
 class Touro extends Weapon {
-    constructor() {
-        super("Touro");
-    }
+    constructor() { super("Touro"); }
     init(player) {
-        this.bull = {
-            x: player.x,
-            y: player.y,
-            id: Math.random(),
-            state: 'idle', // idle, charging
-            chargeTimer: 0,
-            target: null
-        };
+        this.bull = { id: Math.random(), state: 'idle', chargeTimer: 0, x: player.x, y: player.y, chargeAngle: 0, chargeDistance: 0, maxChargeDistance: 600 };
     }
     updatePet(player, enemies, weaponInstance, deltaTime) {
         if (!this.bull) this.init(player);
         const bull = this.bull;
-
-        // Se sair da tela, volta para o jogador
-        if (bull.x < 0 || bull.x > canvas.width || bull.y < 0 || bull.y > canvas.height) {
-            bull.state = 'returning';
-        }
-
+        if (bull.x < 0 || bull.x > canvas.width || bull.y < 0 || bull.y > canvas.height) bull.state = 'returning';
         if (bull.state === 'returning') {
             const angle = Math.atan2(player.y - bull.y, player.x - bull.x);
             bull.x += Math.cos(angle) * weaponInstance.speed * (deltaTime / 16.67);
             bull.y += Math.sin(angle) * weaponInstance.speed * (deltaTime / 16.67);
-            if (distance(bull.x, bull.y, player.x, player.y) < player.size) {
-                bull.state = 'idle';
-            }
+            if (distance(bull.x, bull.y, player.x, player.y) < player.size + 20) bull.state = 'idle';
             return;
         }
-
         if (bull.state === 'idle') {
-            // Segue o jogador
-            const angleToPlayer = Math.atan2(player.y - bull.y, player.x - bull.x);
             const distToPlayer = distance(bull.x, bull.y, player.x, player.y);
             if (distToPlayer > 80) {
-                 bull.x += Math.cos(angleToPlayer) * (player.speed * 0.8) * (deltaTime / 16.67);
-                 bull.y += Math.sin(angleToPlayer) * (player.speed * 0.8) * (deltaTime / 16.67);
+                const angleToPlayer = Math.atan2(player.y - bull.y, player.x - bull.x);
+                bull.x += Math.cos(angleToPlayer) * (player.speed * 0.9) * (deltaTime / 16.67);
+                bull.y += Math.sin(angleToPlayer) * (player.speed * 0.9) * (deltaTime / 16.67);
             }
-
             bull.chargeTimer += deltaTime;
             if (bull.chargeTimer >= weaponInstance.cooldown) {
-                 if (enemies.length > 0) {
-                    bull.target = [...enemies].sort((a, b) => distance(bull.x, bull.y, a.x, a.y) - distance(bull.x, bull.y, b.x, b.y))[0];
-                    bull.state = 'charging';
-                    bull.chargeTimer = 0;
-                 }
+                if (enemies.length > 0) {
+                    const target = [...enemies].filter(e => e.isAlive()).sort((a, b) => distance(bull.x, bull.y, a.x, a.y) - distance(bull.x, bull.y, b.x, b.y))[0];
+                    if (target) {
+                        bull.state = 'charging';
+                        bull.chargeTimer = 0;
+                        bull.chargeDistance = 0;
+                        bull.chargeAngle = Math.atan2(target.y - bull.y, target.x - bull.x);
+                    }
+                }
             }
         }
-
         if (bull.state === 'charging') {
-            if (!bull.target || !bull.target.isAlive()) {
-                bull.state = 'idle';
-                return;
-            }
-
-            const angle = Math.atan2(bull.target.y - bull.y, bull.target.x - bull.x);
-            bull.x += Math.cos(angle) * weaponInstance.speed * (deltaTime / 16.67);
-            bull.y += Math.sin(angle) * weaponInstance.speed * (deltaTime / 16.67);
-
+            bull.x += Math.cos(bull.chargeAngle) * weaponInstance.speed * (deltaTime / 16.67);
+            bull.y += Math.sin(bull.chargeAngle) * weaponInstance.speed * (deltaTime / 16.67);
+            bull.chargeDistance += weaponInstance.speed * (deltaTime / 16.67);
             enemies.forEach(e => {
                 if (checkCollision({ ...bull, size: weaponInstance.petSize }, e) && (!e.lastHitByBull || Date.now() - e.lastHitByBull > 500)) {
                     e.takeDamage(weaponInstance.damage * player.geralDamage * player.petDamage);
-                    if(!e.lastHitByBull) e.lastHitByBull = {};
                     e.lastHitByBull = Date.now();
                 }
             });
-
-            if (distance(bull.x, bull.y, bull.target.x, bull.target.y) < 20) {
-                 bull.state = 'idle';
-            }
+            if (bull.chargeDistance > bull.maxChargeDistance) bull.state = 'returning';
         }
     }
+    drawPet(ctx) { if (this.bull) drawWeaponSymbol('Touro', this.bull.x, this.bull.y); }
 }
-class Lobos extends Weapon             { 
-    constructor() { super("Lobos"); } 
-    init(player) { this.wolves = []; this.addWolf(player); } 
-    onLevelUp(player, level) { if (level === 2 || level === 5) this.addWolf(player); } 
-    addWolf(player){ this.wolves.push({ x: player.x, y: player.y, id: Math.random() }); } 
-    updatePet(player, enemies, weaponInstance, deltaTime) { 
-        if (enemies.length === 0) return; 
-        this.wolves.forEach(wolf => { let targets = [...enemies].filter(e => e.isAlive()).sort((a, b) => distance(wolf.x, wolf.y, a.x, a.y) - distance(wolf.x, wolf.y, b.x, b.y)); 
-            if (targets.length > 0) { 
-                const target = targets[0]; 
-                const angle = Math.atan2(target.y - wolf.y, target.x - wolf.x); 
-                wolf.x += Math.cos(angle) * weaponInstance.speed * (deltaTime / 16.67); wolf.y += Math.sin(angle) * weaponInstance.speed * (deltaTime / 16.67); 
-                if (checkCollision({ ...wolf, size: weaponInstance.petSize }, target) && (!target.lastHitByWolf || !target.lastHitByWolf[wolf.id] || Date.now() - target.lastHitByWolf[wolf.id] > 500)) { 
-                    target.takeDamage(weaponInstance.damage * player.geralDamage * player.petDamage); 
-                    if(!target.lastHitByWolf) target.lastHitByWolf = {}; target.lastHitByWolf[wolf.id] = Date.now(); } 
-            } 
-        }); 
-    } 
+class Lobos extends Weapon {
+    constructor() { super("Lobos"); }
+    init(player) { this.wolves = []; this.addWolf(player); }
+    onLevelUp(player, level) { if (level === 2 || level === 5) this.addWolf(player); }
+    addWolf(player) { this.wolves.push({ x: player.x, y: player.y, id: Math.random() }); }
+    updatePet(player, enemies, weaponInstance, deltaTime) {
+        if (enemies.length === 0) {
+            this.wolves.forEach(wolf => {
+                const distToPlayer = distance(wolf.x, wolf.y, player.x, player.y);
+                if (distToPlayer > 100) {
+                    const angle = Math.atan2(player.y - wolf.y, player.x - wolf.x);
+                    wolf.x += Math.cos(angle) * weaponInstance.speed * (deltaTime / 16.67);
+                    wolf.y += Math.sin(angle) * weaponInstance.speed * (deltaTime / 16.67);
+                }
+            });
+            return;
+        }
+        this.wolves.forEach(wolf => {
+            let targets = [...enemies].filter(e => e.isAlive()).sort((a, b) => distance(wolf.x, wolf.y, a.x, a.y) - distance(wolf.x, wolf.y, b.x, b.y));
+            if (targets.length > 0) {
+                const target = targets[0];
+                const angle = Math.atan2(target.y - wolf.y, target.x - wolf.x);
+                wolf.x += Math.cos(angle) * weaponInstance.speed * (deltaTime / 16.67); wolf.y += Math.sin(angle) * weaponInstance.speed * (deltaTime / 16.67);
+                if (checkCollision({ ...wolf, size: weaponInstance.petSize }, target) && (!target.lastHitByWolf || !target.lastHitByWolf[wolf.id] || Date.now() - target.lastHitByWolf[wolf.id] > 500)) {
+                    target.takeDamage(weaponInstance.damage * player.geralDamage * player.petDamage);
+                    if (!target.lastHitByWolf) target.lastHitByWolf = {}; target.lastHitByWolf[wolf.id] = Date.now();
+                }
+            }
+        });
+    }
+    drawPet(ctx) { this.wolves.forEach(wolf => drawWeaponSymbol('Lobos', wolf.x, wolf.y)); }
 }
-
 
 
 const WEAPON_TYPES = { 'Machado': Machado, 'Espada': Espada, 'Chicote': Chicote, 'Projetil Mágico': ProjetilMagico, 'Fragmento de Gelo': IceShard, 'Tiro Envenenado': PoisonShot, 'Bomba': Bomb, 'Bomba Incendiária': IncendiaryBomb, 'Bomba Congelada': FrozenBomb, 'Bomba de Veneno': VenenoBomb, 'Bombinhas': Bombinhas, 'Esfera Orbitante': OrbitingSphere, 'Chamas Orbitais': ChamasOrbitais, 'Frio Orbital': FrioOrbital, 'Veneno Orbital': VenenoOrbital, 'Pés Quentes': HotFeet, 'Bumerangue': Bumerangue, 'Perfuradora': Perfuradora, 'Raio': Raio, 'Espirito da Luz': EspiritoDaLuz, 'Espirito das Trevas': EspiritoDasTrevas, 'Aranha': Aranha, 'Touro': Touro, 'Lobos': Lobos };
